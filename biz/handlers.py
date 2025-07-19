@@ -82,6 +82,9 @@ class MMRotateTrainingHandler(BaseHandler):
             f.write("=" * 50 + "\n\n")
             f.flush()
             logger.info(f"开始执行命令: {' '.join(command)} in {working_dir}")
+            logger.info(f"运行下面指令可实时查看日志文件：")
+            logger.info(f'Linux: tail -f "{subprocess_output_filename}"')
+            logger.info(f'Windows: Get-Content "{subprocess_output_filename}" -Wait')
             result = run(command, check=True, cwd=working_dir, stdout=f, stderr=f)
             if result.returncode != 0:
                 raise RuntimeError(f"训练脚本执行失败，返回码：{result.returncode}")
@@ -134,6 +137,9 @@ class MMRotateTestingHandler(BaseHandler):
             f.write("=" * 50 + "\n\n")
             f.flush()
             logger.info(f"开始执行命令: {' '.join(command)} in {working_dir}")
+            logger.info(f"运行下面指令可实时查看日志文件：")
+            logger.info(f"Linux: tail -f {subprocess_output_filename}")
+            logger.info(f"Windows: Get-Content {subprocess_output_filename} -Wait")
             result = run(command, check=True, cwd=working_dir, stdout=f, stderr=f)
             if result.returncode != 0:
                 raise RuntimeError(f"测试脚本执行失败，返回码：{result.returncode}")
