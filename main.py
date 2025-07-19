@@ -1,7 +1,7 @@
 import json
 import time
 
-from config import MAX_EMPTY_FETCHES, FETCH_INTERVAL
+from config.config import MAX_EMPTY_FETCHES, FETCH_INTERVAL
 from dal.sqlite import TaskDB
 from biz.handlers import HandlerFactory
 from common.logger import get_logger
