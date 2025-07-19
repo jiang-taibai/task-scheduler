@@ -1,2 +1,5 @@
+.idea/
 # Project exclude paths
 /logs/
+/scratches/
+/data/
