@@ -55,6 +55,15 @@ def get_filename_stem(path: str) -> str:
     return osp.splitext(osp.basename(path))[0]
 
 
+def get_timestamp() -> str:
+    """
+    获取当前时间戳，格式为 YYYYMMDD_HHMMSS。
+    :return: 当前时间戳字符串
+    """
+    from datetime import datetime
+    return datetime.now().strftime('%Y%m%d%H%M%S')
+
+
 def main():
     pass
 
