@@ -1,6 +1,17 @@
 import sqlite3
+from enum import Enum
 
 from config.config import DB_PATH
+
+
+class Status(Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+    TESTING = "testing"
+    TEST_FAILED = "test_failed"
+    TEST_SUCCESS = "test_success"
 
 
 class TaskDB:
@@ -15,38 +26,21 @@ class TaskDB:
         self.cursor.execute('''
                             CREATE TABLE IF NOT EXISTS tasks
                             (
-                                id
-                                INTEGER
-                                PRIMARY
-                                KEY
-                                AUTOINCREMENT,
-                                type
-                                TEXT
-                                NOT
-                                NULL,
-                                status
-                                TEXT
-                                NOT
-                                NULL,
-                                value
-                                TEXT,
-                                create_time
-                                TIMESTAMP
-                                DEFAULT
-                                CURRENT_TIMESTAMP,
-                                update_time
-                                TIMESTAMP
-                                DEFAULT
-                                CURRENT_TIMESTAMP
+                                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                                type        TEXT NOT NULL,
+                                status      TEXT NOT NULL,
+                                value       TEXT,
+                                create_time TIMESTAMP DEFAULT (DATETIME('now', 'localtime')),
+                                update_time TIMESTAMP DEFAULT (DATETIME('now', 'localtime'))
                             )
                             ''')
         self.conn.commit()
 
     def fetch_pending_tasks(self):
-        self.cursor.execute('''
+        self.cursor.execute(f'''
                             SELECT *
                             FROM tasks
-                            WHERE status = 'pending'
+                            WHERE status = '${Status.PENDING.value}'
                             ORDER BY create_time ASC
                             ''')
         return self.cursor.fetchall()
@@ -61,13 +55,22 @@ class TaskDB:
         self.conn.commit()
 
     def update_task_status_to_done(self, task_id: int):
-        self._update_task_status(task_id, 'done')
+        self._update_task_status(task_id, Status.DONE.value)
 
     def update_task_status_to_failed(self, task_id: int):
-        self._update_task_status(task_id, 'failed')
+        self._update_task_status(task_id, Status.FAILED.value)
 
     def update_task_status_to_running(self, task_id: int):
-        self._update_task_status(task_id, 'running')
+        self._update_task_status(task_id, Status.RUNNING.value)
+
+    def update_task_status_to_testing(self, task_id: int):
+        self._update_task_status(task_id, Status.TESTING.value)
+
+    def update_task_status_to_test_success(self, task_id: int):
+        self._update_task_status(task_id, Status.TEST_SUCCESS.value)
+
+    def update_task_status_to_test_failed(self, task_id: int):
+        self._update_task_status(task_id, Status.TEST_FAILED.value)
 
     def add_task(self, task_type: str, value: str) -> int:
         self.cursor.execute('''
@@ -76,3 +79,11 @@ class TaskDB:
                             ''', (task_type, value))
         self.conn.commit()
         return self.cursor.lastrowid
+
+    def query_task_by_id(self, task_id: int):
+        self.cursor.execute('''
+                            SELECT *
+                            FROM tasks
+                            WHERE id = ?
+                            ''', (task_id,))
+        return self.cursor.fetchone()
