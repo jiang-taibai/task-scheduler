@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Type
 from subprocess import run
 from pathlib import Path
 
-from common.utils import make_sure_dir_exists, get_absolute_path, get_filename_stem
+from common.utils import make_sure_dir_exists, get_absolute_path, get_filename_stem, get_timestamp
 from config.config import LOG_ROOT
 from dal.sqlite import TaskDB
 
@@ -32,7 +32,7 @@ class BaseHandler(ABC):
         self.db = TaskDB()
 
     @abstractmethod
-    def execute(self, value: Dict[str, Any]) -> None:
+    def execute(self, value: Dict[str, Any], **kwargs) -> None:
         pass
 
     @abstractmethod
@@ -47,7 +47,7 @@ class BaseHandler(ABC):
 class PrintHandler(BaseHandler):
     type_name = "print"
 
-    def execute(self, value: Dict[str, Any]) -> None:
+    def execute(self, value: Dict[str, Any], **kwargs) -> None:
         message = value.get("message", "[No message provided]")
         print(f"[PrintHandler] {message}")
 
@@ -60,21 +60,27 @@ class PrintHandler(BaseHandler):
 class MMRotateTrainingHandler(BaseHandler):
     type_name = "mmrotate_training"
 
-    def execute(self, value: Dict[str, Any]) -> None:
+    def execute(self, value: Dict[str, Any], **kwargs) -> None:
         python_interpreter = value.get("python_interpreter", "python")
         training_script = value.get("training_script", "train.py")
         config_file = value.get("config_file", "default_config.py")
+        optional_arguments = value.get("optional_arguments", [])
         working_dir = value.get("working_dir", str(Path(training_script).parent.parent))
 
         subprocess_output_filename = osp.join(
             LOG_ROOT,
             r"./handler_log/mmrotate_training/",
-            get_filename_stem(config_file) + ".log"
+            f"{get_timestamp()}_{get_filename_stem(config_file)}.log"
         )
         subprocess_output_filename = osp.abspath(subprocess_output_filename)
         make_sure_dir_exists(subprocess_output_filename)
 
-        command = [python_interpreter, training_script, config_file]
+        command = [
+            python_interpreter,
+            training_script,
+            config_file,
+            *optional_arguments
+        ]
         with open(get_absolute_path(subprocess_output_filename), "a", encoding="utf-8") as f:
             f.write("=" * 50 + "\n")
             f.write("config:\n" + json.dumps(value, indent=4) + "\n")
@@ -85,7 +91,7 @@ class MMRotateTrainingHandler(BaseHandler):
             logger.info(f"运行下面指令可实时查看日志文件：")
             logger.info(f'Linux: tail -f "{subprocess_output_filename}"')
             logger.info(f'Windows: Get-Content "{subprocess_output_filename}" -Wait')
-            result = run(command, check=True, cwd=working_dir, stdout=f, stderr=f)
+            result = run(command, check=True, cwd=working_dir, stdout=f, stderr=f, timeout=kwargs.get('timeout', None))
             if result.returncode != 0:
                 raise RuntimeError(f"训练脚本执行失败，返回码：{result.returncode}")
 
@@ -93,21 +99,23 @@ class MMRotateTrainingHandler(BaseHandler):
                  python_interpreter: str,
                  training_script: str,
                  config_file: str,
+                 optional_arguments: List[str] = "",
                  working_dir: str = None) -> None:
         task_value = {
             "python_interpreter": python_interpreter,
             "training_script": training_script,
             "config_file": config_file,
+            "optional_arguments": optional_arguments,
             "working_dir": working_dir
         }
-        self.db.add_task(self.type_name, json.dumps(task_value))
+        self.db.add_task(self.type_name, json.dumps(task_value, indent=4))
 
 
 @register_handler
 class MMRotateTestingHandler(BaseHandler):
     type_name = "mmrotate_testing"
 
-    def execute(self, value: Dict[str, Any]) -> None:
+    def execute(self, value: Dict[str, Any], **kwargs) -> None:
         python_interpreter = value.get("python_interpreter", "python")
         testing_script = value.get("testing_script", "test.py")
         config_file = value.get("config_file", "default_config.py")
@@ -118,7 +126,7 @@ class MMRotateTestingHandler(BaseHandler):
         subprocess_output_filename = osp.join(
             LOG_ROOT,
             r"./handler_log/mmrotate_testing/",
-            get_filename_stem(config_file) + ".log"
+            f"{get_timestamp()}_{get_filename_stem(config_file)}.log"
         )
         subprocess_output_filename = osp.abspath(subprocess_output_filename)
         make_sure_dir_exists(subprocess_output_filename)
@@ -140,7 +148,7 @@ class MMRotateTestingHandler(BaseHandler):
             logger.info(f"运行下面指令可实时查看日志文件：")
             logger.info(f"Linux: tail -f {subprocess_output_filename}")
             logger.info(f"Windows: Get-Content {subprocess_output_filename} -Wait")
-            result = run(command, check=True, cwd=working_dir, stdout=f, stderr=f)
+            result = run(command, check=True, cwd=working_dir, stdout=f, stderr=f, timeout=kwargs.get('timeout', None))
             if result.returncode != 0:
                 raise RuntimeError(f"测试脚本执行失败，返回码：{result.returncode}")
 
@@ -161,7 +169,7 @@ class MMRotateTestingHandler(BaseHandler):
             "optional_arguments": optional_arguments,
             "working_dir": working_dir
         }
-        self.db.add_task(self.type_name, json.dumps(task_value))
+        self.db.add_task(self.type_name, json.dumps(task_value, indent=4))
 
 
 class HandlerFactory:
