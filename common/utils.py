@@ -62,11 +62,3 @@ def get_timestamp() -> str:
     """
     from datetime import datetime
     return datetime.now().strftime('%Y%m%d%H%M%S')
-
-
-def main():
-    pass
-
-
-if __name__ == '__main__':
-    main()
