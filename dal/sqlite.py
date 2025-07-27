@@ -37,12 +37,12 @@ class TaskDB:
         self.conn.commit()
 
     def fetch_pending_tasks(self):
-        self.cursor.execute(f'''
+        self.cursor.execute("""
                             SELECT *
                             FROM tasks
-                            WHERE status = '${Status.PENDING.value}'
+                            WHERE status = ?
                             ORDER BY create_time ASC
-                            ''')
+                            """, (Status.PENDING.value,))
         return self.cursor.fetchall()
 
     def _update_task_status(self, task_id: int, status: str):
